@@ -1,7 +1,3 @@
 <resources>
     <string name="app_name">MovieLookup</string>
-    <string name="hint">Enter movie title</string>
-    <string name="poster">Poster</string>
-    <string name="error_code">Error %d</string>
-    <string name="smth_wrong">Something went wrong. Try later.</string>
 </resources>

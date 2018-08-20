@@ -10,29 +10,30 @@ import android.widget.TextView;
 
 import com.squareup.picasso.Picasso;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import androidx.recyclerview.widget.RecyclerView;
 import by.paranoidandroid.movielookup.R;
 import by.paranoidandroid.movielookup.model.entities.Movie;
 
-public class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapter.ViewHolder> {
+public class MoviesAdapter extends RecyclerView.Adapter<MoviesAdapter.ViewHolder> {
     private List<Movie> movies;
     private LayoutInflater layoutInflater;
 
-    public RecyclerViewAdapter(Context context, List<Movie> data) {
-        movies = data;
+    public MoviesAdapter(Context context) {
+        movies = new ArrayList<>();
         layoutInflater = LayoutInflater.from(context);
     }
 
     @Override
-    public RecyclerViewAdapter.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+    public MoviesAdapter.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         return new ViewHolder(layoutInflater.inflate(R.layout.list_item_movie, parent, false));
 
     }
 
     @Override
-    public void onBindViewHolder(RecyclerViewAdapter.ViewHolder holder, int position) {
+    public void onBindViewHolder(MoviesAdapter.ViewHolder holder, int position) {
         Movie movie = movies.get(position);
         holder.title.setText(movie.getTitle());
         Picasso.get()
@@ -45,6 +46,11 @@ public class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapte
     @Override
     public int getItemCount() {
         return movies.size();
+    }
+
+    public void setItems(List<Movie> items) {
+        movies.clear();
+        movies = items;
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {

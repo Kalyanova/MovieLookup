@@ -19,25 +19,22 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import by.paranoidandroid.movielookup.R;
-import by.paranoidandroid.movielookup.adapters.RecyclerViewAdapter;
+import by.paranoidandroid.movielookup.adapters.MoviesAdapter;
 import by.paranoidandroid.movielookup.common.MyApplication;
 import by.paranoidandroid.movielookup.model.entities.Movie;
-import by.paranoidandroid.movielookup.model.entities.MovieResponse;
+import by.paranoidandroid.movielookup.model.repositories.MoviesRepository;
 import by.paranoidandroid.movielookup.utils.GridDividerItemDecoration;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
 
 public class MainActivity extends AppCompatActivity {
     private final String BUNDLE_MOVIES = "MOVIES", BUNDLE_ERROR_MSG = "ERROR_MSG",
-            BUNDLE_BTN_NEXT = "BTN_NEXT", BUNDLE_BTN_LAST = "BTN_LAST",
-            QUERY_KEY_PAGE = "page";
+            BUNDLE_BTN_NEXT = "BTN_NEXT", BUNDLE_BTN_LAST = "BTN_LAST";
     private boolean isBtnNext, isBtnLast;
     private List<Movie> movies;
     private EditText etTitle;
     private ImageButton imageBtn;
     private TextView tvErrorMsg;
     private RecyclerView recyclerView;
+    private MoviesAdapter adapter;
 
     TextWatcher textWatcher = new TextWatcher() {
         @Override
@@ -56,46 +53,6 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-    View.OnClickListener btnListener = view -> {
-        hideKeyboard();
-        Call<MovieResponse> call = MyApplication.getApi().getMovies(etTitle.getText().toString());
-        call.enqueue(new Callback<MovieResponse>() {
-            @Override
-            public void onResponse(Call<MovieResponse> call, Response<MovieResponse> response) {
-                if (response.isSuccessful()) {
-                    MovieResponse movieResponse = response.body();
-                    if (movieResponse != null) {
-                        if (movieResponse.getResponse() && movieResponse.getTotalResults() > 0) {
-                            movies = movieResponse.getSearch();
-                            recyclerView.setAdapter(new RecyclerViewAdapter(MainActivity.this, movies));
-                            recyclerView.setVisibility(View.VISIBLE);
-                            tvErrorMsg.setVisibility(View.GONE);
-                            if (isLastPage(movieResponse.getTotalResults(),
-                                    Integer.valueOf(response.raw().request().url().queryParameter(QUERY_KEY_PAGE)))) {
-                                disableButton(imageBtn);
-                            } else {
-                                imageBtn.setImageDrawable(getResources().getDrawable(R.drawable.navigate_next_black));
-                                isBtnNext = true;
-                            }
-                        } else {
-                            String error = movieResponse.getError() != null
-                                    ? movieResponse.getError()
-                                    : getString(R.string.wrong_rq);
-                            showError(error);
-                        }
-                    }
-                } else {
-                    showError(getString(R.string.error_code, response.code()));
-                }
-            }
-
-            @Override
-            public void onFailure(Call<MovieResponse> call, Throwable t) {
-                showError(getString(R.string.smth_wrong));
-            }
-        });
-    };
-
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -106,7 +63,7 @@ public class MainActivity extends AppCompatActivity {
         tvErrorMsg = findViewById(R.id.tv_error_msg);
         imageBtn = findViewById(R.id.btn_lookup);
 
-        imageBtn.setOnClickListener(btnListener);
+        imageBtn.setOnClickListener(view -> onLookupButtonClick());
 
         if (savedInstanceState != null) {
             String error = savedInstanceState.getString(BUNDLE_ERROR_MSG, "");
@@ -122,6 +79,9 @@ public class MainActivity extends AppCompatActivity {
                 disableButton(imageBtn);
             }
         }
+
+        adapter = new MoviesAdapter(this);
+        recyclerView.setAdapter(adapter);
         adjustRecyclerView(getResources().getConfiguration());
     }
 
@@ -157,6 +117,42 @@ public class MainActivity extends AppCompatActivity {
         adjustRecyclerView(newConfig);
     }
 
+    private void onLookupButtonClick() {
+        hideKeyboard();
+        sendGetMoviesRq();
+    }
+
+    private void sendGetMoviesRq() {
+        MoviesRepository moviesRepository = new MoviesRepository();
+        moviesRepository.getMovies(etTitle.getText().toString(),
+                movies -> onGetMoviesResponse(movies, moviesRepository.isLastPage),
+                () -> onGetMoviesFailure(moviesRepository.errorRs, moviesRepository.errorCode));
+    }
+
+    private void onGetMoviesResponse(List<Movie> data, boolean isLastPage) {
+        movies = data;
+        adapter.setItems(movies);
+        adapter.notifyDataSetChanged();
+        recyclerView.setVisibility(View.VISIBLE);
+        tvErrorMsg.setVisibility(View.GONE);
+        if (isLastPage) {
+            disableButton(imageBtn);
+        } else {
+            imageBtn.setImageDrawable(getResources().getDrawable(R.drawable.navigate_next_black));
+            isBtnNext = true;
+        }
+    }
+
+    private void onGetMoviesFailure(String error, int errorCode) {
+        if (error != null) {
+            showError(error);
+        } else if (errorCode != 0) {
+            showError(getString(R.string.error_code, errorCode));
+        } else {
+            showError(getString(R.string.smth_wrong));
+        }
+    }
+
     private void adjustRecyclerView(Configuration newConfig) {
         final int SPAN_COUNT_PORTRAIT = 2, SPAN_COUNT_HORIZONTAL = 3;
         int spanCount;
@@ -168,13 +164,9 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(new GridLayoutManager(this, spanCount));
         recyclerView.addItemDecoration(new GridDividerItemDecoration(getApplicationContext(), spanCount, 8));
         if (movies != null) {
-            recyclerView.setAdapter(new RecyclerViewAdapter(MainActivity.this, movies));
+            adapter.setItems(movies);
+            adapter.notifyDataSetChanged();
         }
-    }
-
-    private boolean isLastPage(int totalResults, int page) {
-        return (totalResults % 10 == 0 && totalResults / 10 == page)
-                || (totalResults / 10 + 1 == page);
     }
 
     private void showError(String message) {

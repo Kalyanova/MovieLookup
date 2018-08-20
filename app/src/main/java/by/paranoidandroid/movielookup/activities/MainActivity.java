@@ -111,12 +111,6 @@ public class MainActivity extends AppCompatActivity {
         super.onSaveInstanceState(outState);
     }
 
-    @Override
-    public void onConfigurationChanged(Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-        adjustRecyclerView(newConfig);
-    }
-
     private void onLookupButtonClick() {
         hideKeyboard();
         sendGetMoviesRq();
